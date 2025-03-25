@@ -1,0 +1,17 @@
+# Python build directories
+build/
+dist/
+__pycache__/
+*.pyc
+
+# PyInstaller files
+*.spec
+
+# IDE settings
+.vscode/
+.idea/
+
+# Environment
+.env
+venv/
+.venv/
