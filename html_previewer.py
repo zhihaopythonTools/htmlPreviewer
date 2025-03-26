@@ -1,8 +1,9 @@
 from PyQt5.QtWidgets import (QApplication, QMainWindow, QWidget,
                             QVBoxLayout, QHBoxLayout, QTextEdit,
-                            QPushButton, QSplitter, QMessageBox)
+                            QPushButton, QSplitter, QMessageBox,
+                            QInputDialog, QFileDialog)
 from PyQt5.QtWebEngineWidgets import QWebEngineView
-from PyQt5.QtCore import Qt, QUrl
+from PyQt5.QtCore import Qt, QUrl, QSize
 from PyQt5.QtGui import QDesktopServices
 import sys
 import os
@@ -32,7 +33,7 @@ class HTMLPreviewer(QMainWindow):
         # 减少上下边距，设置为最小值
         button_layout.setContentsMargins(10, 0, 10, 0)  # 上下边距设为0
         button_layout.setSpacing(10)  # 减少控件之间的间距
-        button_container.setFixedWidth(300)  # 设置固定宽度
+        button_container.setFixedWidth(400)  # 设置固定宽度
         button_container.setFixedHeight(50)  # 设置固定高度，减少上下空白
         
         # 预览按钮
@@ -49,6 +50,15 @@ class HTMLPreviewer(QMainWindow):
         browser_btn.setFixedSize(120, 40)
         browser_btn.clicked.connect(self.open_in_browser)
         button_layout.addWidget(browser_btn)
+
+        # 添加按钮之间的间距
+        button_layout.addSpacing(10)
+
+        # 保存为图片按钮
+        save_image_btn = QPushButton('保存为图片')
+        save_image_btn.setFixedSize(120, 40)
+        save_image_btn.clicked.connect(self.save_as_image)
+        button_layout.addWidget(save_image_btn)
         
         # 不需要添加stretch，因为我们已经固定了容器宽度
         # button_layout.addStretch()
@@ -103,6 +113,54 @@ class HTMLPreviewer(QMainWindow):
             self.web_view.setHtml(html_code)
         except Exception as e:
             QMessageBox.warning(self, "预览错误", f"HTML预览失败：{str(e)}")
+
+    def open_in_browser(self):
+        html_code = self.code_editor.toPlainText()
+        if not html_code.strip():
+            QMessageBox.warning(self, "警告", "编辑器内容为空！")
+            return
+
+    def save_as_image(self):
+        # 获取用户输入的图片宽度
+        width, ok = QInputDialog.getInt(self, '设置图片宽度', '请输入图片宽度（像素）：',
+                                      value=800, min=100, max=3000)
+        if not ok:
+            return
+
+        # 获取保存路径
+        file_path, _ = QFileDialog.getSaveFileName(self, '保存图片',
+                                                 filter='PNG图片 (*.png);;所有文件 (*)')
+        if not file_path:
+            return
+
+        # 确保文件扩展名为.png
+        if not file_path.lower().endswith('.png'):
+            file_path += '.png'
+
+        # 获取当前页面大小
+        current_size = self.web_view.page().contentsSize()
+        if current_size.isEmpty():
+            QMessageBox.warning(self, "错误", "无法获取页面大小！")
+            return
+
+        # 计算等比例缩放后的高度
+        scale_factor = width / current_size.width()
+        new_height = int(current_size.height() * scale_factor)
+
+        # 使用grab()方法直接截取QWebEngineView的内容
+        pixmap = self.web_view.grab()
+        
+        # 缩放到指定大小
+        scaled_pixmap = pixmap.scaled(
+            width, new_height,
+            Qt.KeepAspectRatio,
+            Qt.SmoothTransformation
+        )
+        
+        # 保存图片
+        scaled_pixmap.save(file_path)
+
+        QMessageBox.information(self, "成功", "图片已保存！")
 
     def open_in_browser(self):
         html_code = self.code_editor.toPlainText()
